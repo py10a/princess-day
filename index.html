@@ -167,6 +167,12 @@ h2 em{font-style:normal;color:var(--pink)}
   background:linear-gradient(180deg,var(--pearl),var(--blush));-webkit-background-clip:text;background-clip:text;color:transparent}
 .today{font-family:var(--f-hand);font-size:1.5rem;color:var(--gold);rotate:-3deg;display:inline-block}
 .stepper{display:flex;gap:10px;margin-top:12px}
+.days{display:flex;gap:8px;overflow-x:auto;padding:6px 2px 10px;margin:10px 0 6px;scroll-snap-type:x mandatory;scrollbar-width:none;max-width:100%}
+.days::-webkit-scrollbar{display:none}
+.day{flex:0 0 auto;scroll-snap-align:start;min-width:62px;padding:8px 10px;border-radius:16px;border:1.5px solid rgba(255,194,217,.3);background:rgba(255,246,240,.05);color:var(--pearl);cursor:pointer;text-align:center;font:inherit;line-height:1.1;transition:border-color var(--dur-normal),background var(--dur-normal)}
+.day small{display:block;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;opacity:.7}
+.day b{display:block;font-family:var(--f-display);font-weight:900;font-size:1.35rem}
+.day[aria-pressed="true"]{border-color:var(--pink);background:rgba(255,79,154,.22);box-shadow:0 0 0 3px rgba(255,79,154,.35)}
 .stepper .btn{padding:0;width:52px;font-size:1.4rem}
 
 /* ---------- scene 4 ---------- */
@@ -378,7 +384,8 @@ h2 em{font-style:normal;color:var(--pink)}
       <div>
         <span class="kicker" data-s>питання №2 · крути стрілку пальчиком 👆</span>
         <h2 id="h3" tabindex="-1" data-s>О котрій, <em>Рибко?</em> ⏰</h2>
-        <div data-s><span class="today">сьогодні о</span></div>
+        <div class="days" id="days" role="group" aria-label="День побачення" data-s></div>
+        <div data-s><span class="today" id="dayLabel">сьогодні о</span></div>
         <div class="bigtime" id="bigtime" data-s aria-hidden="true">18:00</div>
         <p class="react" id="r3" aria-live="polite" data-s></p>
         <div class="stepper" data-s>
@@ -471,7 +478,7 @@ h2 em{font-style:normal;color:var(--pink)}
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];
   const center = el => { const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
 
-  const state = { plan: null, movie: null, time: '18:00', outfit: null };
+  const state = { plan: null, movie: null, time: '18:00', day: 'сьогодні', outfit: null };
 
   /* ---------- toast ---------- */
   const toastEl = $('#toast'); let tt;
@@ -755,6 +762,22 @@ h2 em{font-style:normal;color:var(--pink)}
   $('#minus').addEventListener('click', () => setStep(step - 1));
   $('#plus').addEventListener('click', () => setStep(step + 1));
   setStep(24);
+  const daysEl = $('#days'), dayLabel = $('#dayLabel');
+  const WD = ['нд', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+  const MO = ['січ.', 'лют.', 'бер.', 'квіт.', 'трав.', 'черв.', 'лип.', 'серп.', 'вер.', 'жовт.', 'лист.', 'груд.'];
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(); d.setDate(d.getDate() + i);
+    const name = i === 0 ? 'сьогодні' : i === 1 ? 'завтра' : `${WD[d.getDay()]}, ${d.getDate()} ${MO[d.getMonth()]}`;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'day'; b.setAttribute('aria-pressed', i === 0 ? 'true' : 'false'); b.setAttribute('aria-label', name);
+    b.innerHTML = `<small>${i === 0 ? 'сьогодні' : i === 1 ? 'завтра' : WD[d.getDay()]}</small><b>${d.getDate()}</b><small>${MO[d.getMonth()]}</small>`;
+    b.addEventListener('click', () => {
+      $$('.day').forEach(o => o.setAttribute('aria-pressed', 'false')); b.setAttribute('aria-pressed', 'true');
+      state.day = name; dayLabel.textContent = `${name} о`;
+      if (i > 1) say(r3, 'записую в календар 📅💖');
+    });
+    daysEl.append(b);
+  }
   $('#n3').addEventListener('click', e => {
     const c = ptr(e) || center($('#n3')); burst(c.x, c.y, { n: 24, set: ['⏰', '💚', '✨'] });
     go(3, c);
@@ -804,7 +827,7 @@ h2 em{font-style:normal;color:var(--pink)}
     const hasMovie = state.plan === 'home' && state.movie;
     $('#t-movie').hidden = $('#t-movie-dt').hidden = !hasMovie;
     if (hasMovie) $('#t-movie').textContent = `«${state.movie}»`;
-    $('#t-time').textContent = `сьогодні о ${state.time}`;
+    $('#t-time').textContent = `${state.day} о ${state.time}`;
     $('#t-outfit').textContent = FIT[state.outfit] || 'як тобі зручно 💅';
     setTimeout(() => { rise(30); }, 500);
     startLove(); sendAnswers();
@@ -837,7 +860,7 @@ h2 em{font-style:normal;color:var(--pink)}
   async function sendAnswers() {
     const lines = ['Вона сказала ТАК! 💚', `Що: ${PLAN[state.plan] || '—'}`];
     if (state.plan === 'home' && state.movie) lines.push(`Фільм: «${state.movie}»`);
-    lines.push(`Коли: сьогодні о ${state.time}`, `Дрес-код: ${FIT[state.outfit] || '—'}`, `Спроб натиснути «ні»: ${tries}`);
+    lines.push(`Коли: ${state.day} о ${state.time}`, `Дрес-код: ${FIT[state.outfit] || '—'}`, `Спроб натиснути «ні»: ${tries}`);
     const el = $('#sent');
     try {
       const r = await fetch(NTFY, { method: 'POST', body: lines.join('\n'), headers: { Title: 'Princess said YES', Tags: 'crown,heart' } });
